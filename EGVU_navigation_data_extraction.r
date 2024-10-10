@@ -17,7 +17,7 @@ library(lubridate)
 library(data.table); setDTthreads(percent = 65)
 library(leaflet)
 library(units)
-
+library(oce)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -92,14 +92,39 @@ dim(locs)
 sample_tracks<-locs %>%
   st_as_sf(coords=c('location_long','location_lat'), crs=4326)
 tmap_mode("view")
+c_osm <- tmaptools::read_osm(st_bbox(sample_tracks))
 tm_basemap(server="OpenStreetMap") +
   tm_shape(sample_tracks)+
   tm_symbols(col = 'individual_local_identifier', size = 0.1)
 tmap_mode("plot")
-EGVUmap<-tm_basemap(server="OpenStreetMap") +
+EGVUmap<-tm_shape(c_osm) +
+  tm_rgb() +
   tm_shape(sample_tracks)+
   tm_symbols(col = 'individual_local_identifier', size = 0.1)
 tmap_save(EGVUmap,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/EGVU_sample_tracks10.jpg")
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# EXTRACT MAGNETIC FIELD FOR ALL TRACKS
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+EGVU_mf<-magneticField(longitude=st_coordinates(sample_tracks)[,1],
+                       latitude=st_coordinates(sample_tracks)[,2],
+                       time=sample_tracks$timestamp,
+                       version = 13)
+
+
+sample_tracks<-sample_tracks %>%
+  mutate(declination=EGVU_mf$declination,
+         inclination=EGVU_mf$inclination,
+         intensity=EGVU_mf$intensity)
+
+locs<-locs %>%
+  mutate(declination=EGVU_mf$declination,
+         inclination=EGVU_mf$inclination,
+         intensity=EGVU_mf$intensity)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -108,5 +133,5 @@ tmap_save(EGVUmap,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigatio
 
 
 fwrite(locs,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/EGVU_sample_locations10.csv")
-st_write(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/EGVU_sample_locations10.gpkg")
+st_write(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/EGVU_sample_locations10.gpkg", append=F)
 

@@ -78,14 +78,38 @@ sample_tracks<-REKI_sf %>%
 # SHOW TRACKS ON MAP 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 tmap_mode("view")
+c_osm <- tmaptools::read_osm(st_bbox(sample_tracks))
 tm_basemap(server="OpenStreetMap") +
   tm_shape(sample_tracks)+
   tm_symbols(col = 'id', size = 0.1)
 tmap_mode("plot")
-REKImap<-tm_basemap(server="OpenStreetMap") +
+REKImap<-tm_shape(c_osm) +
+  tm_rgb() +
   tm_shape(sample_tracks)+
   tm_symbols(col = 'id', size = 0.1)
 tmap_save(REKImap,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_tracks10.jpg")
+
+
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# EXTRACT MAGNETIC FIELD FOR ALL TRACKS
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+REKI_mf<-magneticField(longitude=st_coordinates(sample_tracks)[,1],
+                       latitude=st_coordinates(sample_tracks)[,2],
+                       time=sample_tracks$timestamp,
+                       version = 13)
+
+
+sample_tracks<-sample_tracks %>%
+  mutate(declination=REKI_mf$declination,
+         inclination=REKI_mf$inclination,
+         intensity=REKI_mf$intensity)
+
+
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -93,7 +117,7 @@ tmap_save(REKImap,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigatio
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 fwrite(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations10.csv")
-st_write(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations10.gpkg")
+st_write(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations10.gpkg", append=FALSE)
 saveRDS(sample_tracks, file = "C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_tracks.rds", version=3)
 
 sample_tracks %>% st_write("data/REKI_sample_points.kml", append=FALSE)
