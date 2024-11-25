@@ -49,7 +49,15 @@ locs<-movebank_retrieve(study_id=MYSTUDY, entity_type="event",
                               individual_id = birds$individual_id
 )
 
-
+# locs15min<-movebank_download_study(study_id=MYSTUDY,
+#                                    individual_id = birds$individual_id,
+#                                attributes=NULL, #c("battery_charge_percent", "gps_hdop", "gps_satellite_count", "ground_speed", "heading", "tag_voltage", "timestamp"),
+#                                sensor_type_id = c("gps"),
+#                                remove_movebank_outliers = TRUE,
+#                                progress=T) %>% ## show a progress bar
+#   mt_filter_per_interval(unit = "15 minutes")
+# 
+# saveRDS(locs15min,"EGVU_15min_locs.rds")
 # ## filter first autumn migration
 # #Iliaz: 19/09/2012	-07/10/2012
 # #Panteley 2018-07-27T05:55:49.814610Z	2019-01-26T15:01:04.624955Z
