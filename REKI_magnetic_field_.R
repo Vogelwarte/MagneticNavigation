@@ -9,6 +9,7 @@
 # load required packages 
 library(oce)
 library(tmap)
+library(basemaps)
 library(sf)
 library(terra)
 # library(stars) this is another packages that might have advantages for combining raster and sf workflows
@@ -170,51 +171,41 @@ ggsave(filename = 'output/REKI_magnetic_field_autumn_spring.png', height = 9, wi
 # 6. Plot data on a map background --------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-## convert data to spatial objects
+## convert data to spatial objects - only needed if tmap is used
 str(overlap)
 magField_sf<-overlap %>%
-  st_as_sf(coords = c("long", "lat"), crs=4326)
+  st_as_sf(coords = c("long", "lat"), crs=4326) %>%
+  st_transform(3857)
 
 
 springMig_sf<-data %>% filter(first_migration == 'spring') %>%
-  st_as_sf( coords = c("long", "lat"), crs=4326) %>% 
+  st_as_sf( coords = c("long", "lat"), crs=4326) %>%
   group_by(id) %>%
   #arrange(timestamp) %>%
   summarize() %>%
-  st_cast("MULTILINESTRING") 
+  st_cast("MULTILINESTRING")%>%
+  st_transform(3857)
 
+data_sf<-data %>%
+  st_as_sf( coords = c("long", "lat"), crs=4326) %>%
+  st_transform(3857)
 
 # extract background map tiles - check the provider argument, there are many options
-basemap <- maptiles::get_tiles(x = bbox, 
-                               zoom = 3,
-                               crop = TRUE, provider = "OpenTopoMap")
-
-# plot map
-tmap_mode("plot")
-tm_shape(basemap)+
-  tm_rgb()+
-  tm_shape(magField_sf)  +
-  tm_symbols(col = "green", size = 2, alpha=0.5) +
-  tm_shape(springMig_sf)  +
-  tm_lines(col = "red", size = 0.2) +
-  tm_facets(by="id", free.scales=FALSE)
+basemap <- basemap_ggplot(ext=st_bbox(data_sf), map_service = "esri", map_type = "world_dark_gray_base")
 
 
 
 # create a plot 
-ggmap(basemap) + 
-  geom_point(data = overlap, 
-             mapping = aes(x = long, y = lat, color = 'Experienced Magnetic Field in Autumn'), size = 1.5) +
-  geom_path(data = data %>% filter(first_migration == 'spring'), 
-            mapping = aes(x = long, y = lat, color = 'Spring Migration')) +
-  coord_equal() + 
+basemap +
+  geom_sf(data = magField_sf, aes(color = 'Experienced Magnetic Field in Autumn'), size=1.5) +
+  geom_sf(data = springMig_sf,aes(color = 'Spring Migration')) +
+  coord_sf(default_crs = sf::st_crs(3857)) +
   facet_wrap(~id) +
   labs(title = "Experienced Magnetic Field During Autumn Migration and Spring Migration route for ten Red Kites",
        x = "Longitude",
        y = "Latitude") +
-  scale_color_manual(name = 'Legend', values = c('Experienced Magnetic Field in Autumn' = 'grey80', 'Spring Migration' = 'red')) +
-  theme_bw() + 
-  theme(legend.position = c(0.75,0.12), 
+  scale_color_manual(name = 'Legend', values = c('Experienced Magnetic Field in Autumn' = 'forestgreen', 'Spring Migration' = 'firebrick')) +
+  theme(legend.position = c(0.75,0.12),  
         legend.title = element_text(size = 14),
         legend.text = element_text(size = 12), 
         plot.title = element_text(size = 15), 
