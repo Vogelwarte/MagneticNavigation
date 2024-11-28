@@ -1,6 +1,6 @@
 
 #### Script for studying magnetic orientation of raptors, here EGVU 
-#### Script written by Filibert Heim, filibert.heim@posteo.de, following instructions from Steffen Oppel and hints from Will Scheider 
+#### Script written by Filibert Heim, filibert.heim@posteo.de, following instructions from Steffen Oppel and hints from Will Schneider 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 1. Preparations  --------
@@ -166,7 +166,8 @@ data_autumn$intensity_max <- data_autumn$intensity + 200 # intensity sensitivity
 data_autumn$intensity_min <- data_autumn$intensity - 200
 
 # create one df of data_autumn and df_rast from spring migration for comparison
-overlap <- df_rast %>% left_join(data_autumn %>% select(-long, -lat, -mean_spring), by = join_by(bird_name), suffix = c('_spring', '_autumn')) %>% 
+overlap <- df_rast %>% 
+  full_join(data_autumn %>% select(-long, -lat, -mean_spring), by = join_by(bird_name), suffix = c('_spring', '_autumn'), relationship = 'many-to-many') %>% 
   select(-migration, -first_migration) %>% 
   mutate(match_inclination = inclination_spring >= inclination_min & inclination_spring <= inclination_max, # create a column that checks whether inclination from spring lies between max and min of autumn migration
          match_declination = declination_spring >= declination_min & declination_spring <= declination_max,
@@ -174,6 +175,8 @@ overlap <- df_rast %>% left_join(data_autumn %>% select(-long, -lat, -mean_sprin
          match_all = match_inclination & match_declination & match_intensity) %>% # creates a TRUE if all other columns above are TRUE
   select(-match_inclination, -match_declination, -match_intensity) %>% 
   filter(match_all == TRUE) # romve all grid cells that are not needed
+
+dim(overlap)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 6. Plot data --------
@@ -198,4 +201,52 @@ ggplot() +
         plot.title = element_text(size = 15), 
         axis.title = element_text(size = 12))
 ggsave(filename = 'output/EGVU_magnetic_field_autumn_spring.png', height = 9, width = 12)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 7. Plot data on a map background --------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## convert data to spatial objects - only needed if tmap is used
+str(overlap)
+magField_sf<-overlap %>%
+  st_as_sf(coords = c("long", "lat"), crs=4326) %>%
+  st_transform(3857)
+
+
+springMig_sf<-data %>% filter(first_migration == 'spring') %>%
+  st_as_sf( coords = c("long", "lat"), crs=4326) %>%
+  group_by(bird_name) %>%
+  arrange(timestamp) %>%
+  summarize() %>%
+  # st_cast("MULTILINESTRING")%>% # this ensures, that no weird connections are made between points that don't belong together - this was the quickest way for troubleshooting and there are probably better solutions! 
+  st_transform(3857)
+
+# create sf data 
+data_sf<-data %>%
+  st_as_sf( coords = c("long", "lat"), crs=4326) %>%
+  st_transform(3857) %>% arrange(bird_name, timestamp)
+
+
+# extract background map tiles - check the provider argument, there are many options
+basemap <- basemap_ggplot(ext=st_bbox(data_sf), map_service = "esri", map_type = "world_dark_gray_base")
+
+
+
+# create a plot 
+basemap +
+  geom_sf(data = magField_sf, aes(color = 'Experienced Magnetic Field in Autumn'), size=1.5) +
+  geom_sf(data = springMig_sf, mapping = aes(color = 'Spring Migration')) +
+  coord_sf(default_crs = sf::st_crs(3857)) +
+  facet_wrap(~bird_name) +
+  labs(title = "Experienced Magnetic Field During Autumn Migration and Spring Migration route for ten Red Kites",
+       x = "Longitude",
+       y = "Latitude") +
+  scale_color_manual(name = 'Legend', values = c('Experienced Magnetic Field in Autumn' = 'forestgreen', 'Spring Migration' = 'firebrick')) +
+  theme(legend.position = c(0.85,0.12),  
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 12), 
+        plot.title = element_text(size = 15), 
+        axis.title = element_text(size = 12))
+ggsave(filename = 'output/EGVU_magnetic_field_autumn_spring.png', height = 9, width = 12)
+
 
