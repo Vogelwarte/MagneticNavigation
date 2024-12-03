@@ -250,8 +250,8 @@ EGVU_data <- iououtput %>%
               group_by(ymo_id) %>%
               summarise(n_locs=length(lat), lat=mean(lat, na.rm=T), long=mean(long, na.rm=T)) %>%
               filter(ymo_id %in% iououtput$ymo_id), by='ymo_id') %>%
-  separate_wider_delim(cols=ymo_id,delim="_",names=c("bird_name","year","month")) %>%
-  mutate(date=lubridate::ymd(paste(year,"-01-01", sep="")) + lubridate::weeks(as.numeric(month) - 1))
+  separate_wider_delim(cols=ymo_id,delim="_",names=c("bird_name","year","month")) %>% 
+  mutate(date = ymd(paste(year, month, '01', spe = '-')))
 
 # add manually annotated data 
 EGVU <- EGVU_data %>% left_join(mig %>% select(bird_name, year, month, migration), by = join_by(bird_name, year, month)) 
@@ -306,7 +306,7 @@ areapred<-ggplot(EGVU_train,aes(x=area, y=migration_pred, colour=evaluation)) + 
 ggarrange(mobpred, distpred, areapred, nsdpred,ncol = 2, nrow = 2, legend = 'right', common.legend = T)
 
 # filter for mis-classifications to understand erroneous predictions 
-EGVU_train %>% filter(class == 'false') # only 6 misclassifiacations, I think thats okay
+EGVU_train %>% filter(class == 'false') # only  misclassifiacations, I think thats okay
 
 #~~
 #### APPLY RANDOM FOREST MODEL TO CLASSIFY MIGRATORY PERIODS PER MONTH TO WHOLE EGVU DATA   --------------------------------------
@@ -346,7 +346,7 @@ EGVU %>%
   scale_color_viridis_c(alpha=1,begin=0,end=1,direction=1) +
   facet_wrap(~bird_name, scales="free_x") +
   theme(legend.position="none")
-ggsave("WHST_mig_pred_over_time.jpg", width=20, height=10)
+# ggsave("WHST_mig_pred_over_time.jpg", width=20, height=10)
 
 
 #### MAP PREDICTED BEHAVIOUR --------------------------------
@@ -361,7 +361,7 @@ outmap<-tm_shape(basemap)+
   tm_shape(EGVU %>% st_as_sf(coords = c('long', 'lat'), crs = 4326))  +
   tm_symbols(size=0.3,col = "migration_pred", palette="viridis")
 outmap
-tmap_save(outmap,"WHST_pred_mig_map.jpg")
+# tmap_save(outmap,"WHST_pred_mig_map.jpg")
 
 
 
