@@ -370,10 +370,10 @@ outmap
 #~~
 
 # bring data in a rather similar structure as the predictions are in other classifications for REKI and WHST
-EGVU_export <- EGVU %>% select(-migration_class, -class, -evaluation) %>% rename(MIG_PRED = migration_pred)
+EGVU_export <- EGVU %>% select(-migration_class, -class, -evaluation) %>% rename(MIG_PRED = migration_pred, MIG_MAN = migration)
 
 # export data 
-fwrite(EGVU_export, "EGVU_mig_predictions.csv")
+fwrite(EGVU_export, "data/EGVU_mig_predictions.csv")
 
 
 
