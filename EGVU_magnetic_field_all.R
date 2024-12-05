@@ -361,7 +361,7 @@ basemap +
   geom_sf(data = magField_sf, aes(color = 'Experienced Magnetic Field in Autumn'), size=1.5) +
   geom_sf(data = springMig_sf, mapping = aes(color = 'Spring Migration')) +
   coord_sf(default_crs = sf::st_crs(3857)) +
-  facet_wrap(~bird_name) +
+  facet_wrap(~bird_name, nrow = 3) +
   labs(title = "Experienced Magnetic Field During Autumn Migration and Spring Migration route for twenty Egyptian Vultures",
        x = "Longitude",
        y = "Latitude") +
