@@ -15,7 +15,7 @@ library(dplyr, warn.conflicts = FALSE)
 library(lubridate)
 library(data.table); setDTthreads(percent = 65)
 library(tmap)
-
+library(oce)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # LOAD DATA ON MIGRATION METRICS
@@ -52,10 +52,13 @@ SEL_INDS<-IND_DATA %>% left_join(reki_ind, by="id") %>%
   mutate(AD=ifelse(age=="3CY+",1,0)) %>%
   group_by(AD) %>%
   slice_head(n=10) %>%
-  filter(!is.na(age)) %>%
-  filter(AD==0)  ## use only juveniles to compare first autumn and first spring migration
+  filter(!is.na(age)) #%>%
+  #filter(AD==0)  ## use only juveniles to compare first autumn and first spring migration
 
-
+SEL_INDS<-IND_DATA %>% left_join(reki_ind, by="id") %>%
+  mutate(AD=ifelse(age=="3CY+",1,0)) %>%
+  filter(id %in% c(928,515)) %>%
+  bind_rows(SEL_INDS)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FILTER TRACKING DATA FOR 10 INDIVIDUALS AND SHOW ON MAP 
@@ -116,8 +119,8 @@ sample_tracks<-sample_tracks %>%
 # SAVE TRACKS AS CSV AND GPKG or AS GOOGLE EARTH FILE
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-fwrite(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations10.csv")
-st_write(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations10.gpkg", append=FALSE)
+fwrite(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations22.csv")
+st_write(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations22.gpkg", append=FALSE)
 saveRDS(sample_tracks, file = "C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_tracks.rds", version=3)
 
 sample_tracks %>% st_write("data/REKI_sample_points.kml", append=FALSE)

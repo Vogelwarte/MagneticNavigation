@@ -18,7 +18,7 @@ library(data.table); setDTthreads(percent = 65)
 library(leaflet)
 library(units)
 library(oce)
-
+library(tmaptools)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # SET UP DOWNLOAD OF TRACKING DATA FROM MOVEBANK --------
@@ -37,7 +37,7 @@ movebank_download_study_info(study_id=MYSTUDY[1])$sensor_type_ids
 birds<-movebank_retrieve(study_id=MYSTUDY[1], entity_type="individual") %>%
   dplyr::rename(individual_id=id,bird_id=local_identifier) %>%
   dplyr::select(individual_id,bird_id,sex,latest_date_born) %>%
-  filter(bird_id %in% c("Polya","Panteley", "Iliaz","Hedjet","Dobromir","Tatul","Volen","Sanie","Sava","Solomon")) %>%    ## not returned "Levkipos","Lola",
+  #filter(bird_id %in% c("Polya","Panteley", "Iliaz","Hedjet","Dobromir","Tatul","Volen","Sanie","Sava","Solomon")) %>%    ## not returned "Levkipos","Lola",
   arrange(bird_id) #%>%
   # mutate(start=c(ymd("2012-09-18"),ymd("2018-07-25"),ymd("2018-09-25"))) %>%
   # mutate(end=c(ymd("2012-10-08"),ymd("2019-01-27"),ymd("2018-12-29"))) 
@@ -140,6 +140,6 @@ locs<-locs %>%
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-fwrite(locs,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/EGVU_sample_locations10.csv")
-st_write(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/EGVU_sample_locations10.gpkg", append=F)
+fwrite(locs,"C:/STEFFEN/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/EGVU_sample_locations_all.csv")
+st_write(sample_tracks,"C:/STEFFEN/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/EGVU_sample_locations_all.gpkg", append=F)
 
