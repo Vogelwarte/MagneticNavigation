@@ -19,7 +19,7 @@ filer <- dplyr::filter
 rename <- dplyr::rename
 
 # read in data 
-data <- readRDS('data/REKI_sample_tracks_2.rds') # this is data which is filtered for 1h intervals and compromises 22 individuals, including REKI_928 amnd REKI_515
+data <- readRDS('data/REKI_sample_tracks100.rds') # this is data which is filtered for 1h intervals and comprises 100 individuals, including REKI_928 and REKI_515 - updated 23 Dec 2024 from 22 to 100 birds
 
 # check data structure 
 head(data)
@@ -141,6 +141,7 @@ overlap <- df_rast %>% select(-mean_spring) %>%
   filter(match_all == TRUE) # remove all grid cells that are not needed
 
 dim(overlap)
+head(overlap)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 5. Plot data --------
@@ -182,47 +183,68 @@ ggplot() +
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 6. Plot data on a map background --------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-## convert data to spatial objects - only needed if tmap is used
-str(overlap)
-magField_sf<-overlap %>%
-  st_as_sf(coords = c("long", "lat"), crs=4326) %>%
-  st_transform(3857)
-
-
-springMig_sf<-data %>% filter(first_migration == 'spring') %>%
-  st_as_sf( coords = c("long", "lat"), crs=4326) %>%
-  group_by(id) %>%
-  #arrange(timestamp) %>%
-  summarize() %>%
-  st_cast("MULTILINESTRING")%>%
-  st_transform(3857)
-
-data_sf<-data %>%
-  st_as_sf( coords = c("long", "lat"), crs=4326) %>%
-  st_transform(3857)
-
 # extract background map tiles - check the provider argument, there are many options
 basemap <- basemap_ggplot(ext=st_bbox(data_sf), map_service = "esri", map_type = "world_dark_gray_base")
 
+  
+  
+# create a plot with tracklines for 25 birds at a time
+  
+allbirds<-unique(data$id)  
+plotgroup<-rep(seq(1:9), each=20)
 
+for (p in 1:max(plotgroup)) {
+  selbirds<-allbirds[which(plotgroup==p)]
+  selbirds<-selbirds[-which(is.na(selbirds))]  ### remove NA when group is smaller than 20
+  
+  ## convert data to spatial objects
+  magField_sf<-overlap %>%
+    filter(id %in% selbirds) %>%
+    st_as_sf(coords = c("long", "lat"), crs=4326) %>%
+    st_transform(3857)
+  
+  
+  data_sf<-data %>%
+    filter(id %in% selbirds) %>%
+    filter(!is.na(first_migration)) %>%
+    st_as_sf( coords = c("long", "lat"), crs=4326) %>%
+    group_by(id, first_migration) %>%
+    #arrange(timestamp) %>%
+    summarize() %>%
+    st_cast("MULTILINESTRING")%>%
+    st_transform(3857)
+  
+  
+  basemap +
+    geom_sf(data = magField_sf, color = 'lightgreen', size=1.5) +
+    geom_sf(data = data_sf,aes(color = first_migration), linewidth=0.7) +
+    
+    facet_wrap(~id) +
+    labs(title = "Experienced magnetic field during first autumn migration",
+         x = "Longitude",
+         y = "Latitude") +
+    scale_color_manual(name = 'First migration', values = c('autumn' = 'navyblue', 'spring' = 'firebrick')) +
+    theme(legend.position.inside = c(0.75,0.12),  
+          legend.title = element_text(size = 14),
+          legend.text = element_text(size = 12), 
+          plot.title = element_text(size = 15), 
+          axis.title = element_text(size = 12))
+  ggsave(filename = sprintf('output/REKI_magnetic_field_migration_group%s.png',p), height = 10, width = 12)
+  
+}
 
-# create a plot 
-basemap +
-  geom_sf(data = magField_sf, aes(color = 'Experienced Magnetic Field in Autumn'), size=1.5) +
-  geom_sf(data = springMig_sf,aes(color = 'Spring Migration')) +
-  coord_sf(default_crs = sf::st_crs(3857)) +
-  facet_wrap(~id) +
-  labs(title = "Experienced Magnetic Field During Autumn Migration and Spring Migration route for ten Red Kites",
-       x = "Longitude",
-       y = "Latitude") +
-  scale_color_manual(name = 'Legend', values = c('Experienced Magnetic Field in Autumn' = 'forestgreen', 'Spring Migration' = 'firebrick')) +
-  theme(legend.position = c(0.75,0.12),  
-        legend.title = element_text(size = 14),
-        legend.text = element_text(size = 12), 
-        plot.title = element_text(size = 15), 
-        axis.title = element_text(size = 12))
-ggsave(filename = 'output/REKI_magnetic_field_autumn_spring_basemap.png', height = 9, width = 12)
+######## COMPILE ALL GRAPHS INTO ONE FILE #######
 
+library(png)
+library(grid)
+library(gridExtra)
+plots<-list.files("output/.", pattern=".png")
+plots
 
-
+pdf("output/REKI_migration_mag_field_all.pdf")
+for (i in 9:16) {
+  p1 <- readPNG(paste0("output/",plots[i]), native = FALSE)
+  grid.raster(p1, width=unit(1, "npc"), height= unit(1, "npc"))
+  plot.new()
+}
+dev.off()
