@@ -18,11 +18,14 @@ library(basemaps)
 # library(stars) this is another packages that might have advantages for combining raster and sf workflows
 library(tidyverse)
 select <- dplyr::select
-filer <- dplyr::filter 
+filter <- dplyr::filter 
 rename <- dplyr::rename
+library(PWFSLSmoke)  ## necessary for logger.info function
+
 
 # load movebank filter functions
-source("C:/Users/filib/Documents/Praktika/Sempach/Tracking data/MoveApps_filter_functions.r") ### loads outlier and speed filter functions from MoveApps
+#source("C:/Users/filib/Documents/Praktika/Sempach/Tracking data/MoveApps_filter_functions.r") ### loads outlier and speed filter functions from MoveApps
+source("C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/DataPrep/MoveApps_filter_functions.r") ### loads outlier and speed filter functions from MoveApps
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2. Data loading  --------
@@ -94,14 +97,14 @@ locs <- locs %>% mutate(timestamp = as_datetime(timestamp),
 locs_sf <- st_as_sf(locs, coords = c('long', 'lat'), crs = 4326, remove = F)
 locs_move2 <- mt_as_move2(locs_sf, time_column = 'timestamp', track_id_column = 'bird_name2')
 
-# apply filtering functions from moveapps
-# remove outliers with function loaded from local file 
-locs_filt <- rmOutlier(locs_move2, maxspeed = 35, MBremove = T) 
+# # apply filtering functions from moveapps
+# # remove outliers with function loaded from local file 
+locs_filt <- rmOutlier(locs_move2, maxspeed = 35, MBremove = T)
 dim(locs_filt)
 
-# remove duplicate locations 
-locs_filt <- mt_filter_unique(locs_filt) 
-dim(locs_filt)# no duplicates seem to exist 
+# remove duplicate locations
+locs_filt <- mt_filter_unique(locs_filt)
+dim(locs_filt)# no duplicates seem to exist
 
 # remove missing data and remove probably wrong locations in unlikely parts of the world
 mt_track_id(locs_filt) <- NULL  ## converts the move2 object to an sf object
@@ -131,12 +134,14 @@ data <- locs_filt %>%
 # NAs are introduced, see where they come from 
 data %>% filter(is.na(migration)) %>% print() # if possible find a way to deal with them - possibly also in the migration classification script?
 
-# this code creates consecutive labelling for the migratory periods - 1 is first autumn migration, 2 is second block of migration 
+# this code creates consecutive labelling for the migratory periods - 1 is first autumn migration, 2 is second block of migration
+# this does not work and produces only NA
 data <- data %>%
   group_by(bird_name) %>%
-  mutate(migration_flag = if_else(migration == "migratory" & (lag(migration, default = NA_character_) %in% c(NA, "stationary")),1, NA_real_), # finds all the transitions between NA/stationary and migratory and labels them with 1
+  mutate(migration_flag = if_else(migration == "migratory" & (dplyr::lag(migration, default = NA_character_) %in% c(NA, "stationary")),1, NA_real_), # finds all the transitions between NA/stationary and migratory and labels them with 1
          first_migration = if_else(migration == 'migratory', cumsum(coalesce(migration_flag, 0)), NA_real_)) # labels all continuous blocks 
 
+unique(data$first_migration)
 # this produces an overview table to verify the first_migration column 
 data %>% group_by(bird_name) %>% 
   summarise(latest_date_born = first(date(latest_date_born)), 
@@ -355,13 +360,18 @@ data_sf<-data_mig %>% filter(first_migration == 'spring') %>%
 basemap <- basemap_ggplot(ext=st_bbox(data_sf), map_service = "esri", map_type = "world_dark_gray_base")
 
 
+## RELOAD WORKSPACE FOR OFFLINE USE ########
+save.image("output/EGVU_all_dat.RData")
+load("output/EGVU_all_dat.RData")
 
 # create a plot 
 basemap +
   geom_sf(data = magField_sf, aes(color = 'Experienced Magnetic Field in Autumn'), size=1.5) +
   geom_sf(data = springMig_sf, mapping = aes(color = 'Spring Migration')) +
-  coord_sf(default_crs = sf::st_crs(3857)) +
-  facet_wrap(~bird_name, nrow = 3) +
+  
+  geom_path(data = data_mig %>% filter(first_migration == 'spring'), 
+            mapping = aes(x = long, y = lat, color = 'Spring Migration')) +coord_sf(default_crs = sf::st_crs(3857)) +
+  facet_wrap(~bird_name, nrow = 4) +
   labs(title = "Experienced Magnetic Field During Autumn Migration and Spring Migration route for twenty Egyptian Vultures",
        x = "Longitude",
        y = "Latitude") +

@@ -10,6 +10,7 @@
 ### load pre-prepared functions and models ----
 setwd('C:/Users/filib/Documents/Praktika/Sempach/MagneticNavigation/')
 source("C:/Users/filib/Documents/Praktika/Sempach/Tracking data/MoveApps_filter_functions.r") ### loads outlier and speed filter functions from MoveApps
+source("C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/DataPrep/MoveApps_filter_functions.r") ### loads outlier and speed filter functions from MoveApps
 
 
 # load and install packages --- 

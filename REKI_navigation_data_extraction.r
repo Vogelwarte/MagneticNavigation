@@ -7,6 +7,7 @@
 
 ### updated script on 10 Oct to take 10 juveniles with outbound and return migration
 
+### updated selection on 23 Dec 2024 to select 100 juveniles for a larger sample size
 
 ####### LIBRARIES REQUIRED
 library(tidyverse)
@@ -51,14 +52,17 @@ reki_ind<-fread("C:/Users/sop/Dropbox/MASTER_databases_redkite/ind_life_historie
 SEL_INDS<-IND_DATA %>% left_join(reki_ind, by="id") %>%
   mutate(AD=ifelse(age=="3CY+",1,0)) %>%
   group_by(AD) %>%
-  slice_head(n=10) %>%
+  slice_head(n=100) %>%
   filter(!is.na(age)) #%>%
   #filter(AD==0)  ## use only juveniles to compare first autumn and first spring migration
 
-SEL_INDS<-IND_DATA %>% left_join(reki_ind, by="id") %>%
-  mutate(AD=ifelse(age=="3CY+",1,0)) %>%
-  filter(id %in% c(928,515)) %>%
-  bind_rows(SEL_INDS)
+if(!TRUE %in% (c(928,515) %in% SEL_INDS$id)) {
+  SEL_INDS<-IND_DATA %>% left_join(reki_ind, by="id") %>%
+    mutate(AD=ifelse(age=="3CY+",1,0)) %>%
+    filter(id %in% c(928,515)) %>%
+    bind_rows(SEL_INDS)
+}
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FILTER TRACKING DATA FOR 10 INDIVIDUALS AND SHOW ON MAP 
@@ -73,8 +77,10 @@ sample_tracks<-REKI_sf %>%
   mutate(MIGRATION=ifelse(is.na(MIGRATION),"not migrating",MIGRATION)) %>%
   select(id, timestamp,geometry,distance_to_next,speed,MIGRATION)
   
-
-
+### several weird duplicate records, which needs to be removed
+duplicates<-export %>% group_by(id, ywk) %>% summarise(N=length(MOB)) %>% filter(N>1)
+# sample_tracks[5266642,]
+# export %>% filter(id==312) %>% filter(ywk=="2019_10")
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -90,7 +96,7 @@ REKImap<-tm_shape(c_osm) +
   tm_rgb() +
   tm_shape(sample_tracks)+
   tm_symbols(col = 'id', size = 0.1)
-tmap_save(REKImap,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_tracks10.jpg")
+tmap_save(REKImap,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_tracks100.jpg")
 
 
 
@@ -119,9 +125,9 @@ sample_tracks<-sample_tracks %>%
 # SAVE TRACKS AS CSV AND GPKG or AS GOOGLE EARTH FILE
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-fwrite(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations22.csv")
-st_write(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations22.gpkg", append=FALSE)
-saveRDS(sample_tracks, file = "C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_tracks.rds", version=3)
+fwrite(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations100.csv")
+st_write(sample_tracks,"C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_locations100.gpkg", append=FALSE)
+saveRDS(sample_tracks, file = "C:/Users/sop/OneDrive - Vogelwarte/General/ANALYSES/Navigation/data/REKI_sample_tracks100.rds", version=3)
 
 sample_tracks %>% st_write("data/REKI_sample_points.kml", append=FALSE)
 sample_tracks %>% st_cast("LINESTRING") %>% st_write("data/REKI_sample_lines.kml", append=FALSE)

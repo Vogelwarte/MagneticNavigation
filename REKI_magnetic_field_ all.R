@@ -5,17 +5,20 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 1. Preparations  --------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+rm(list=ls())
+gc()
 # load required packages 
 library(oce)
 library(tmap)
 library(basemaps)
 library(sf)
 library(terra)
+library(dplyr)
+library(dtplyr)
 # library(stars) this is another packages that might have advantages for combining raster and sf workflows
 library(tidyverse)
 select <- dplyr::select
-filer <- dplyr::filter 
+filter <- dplyr::filter 
 rename <- dplyr::rename
 
 # read in data 
@@ -43,16 +46,36 @@ data <- data %>%
 
 data <- data %>% 
   group_by(id) %>% 
-  filter(migration == 'migratory') %>% # if all tracks should be included, remove this filter 
+  dplyr::filter(migration == 'migratory') %>% # if all tracks should be included, remove this filter 
   mutate(
     first_migration = if_else(year(timestamp) == year(min(timestamp, na.rm = TRUE)), 1, first_migration), 
     first_migration = if_else(year(timestamp) == year(min(timestamp, na.rm = TRUE)) + 1 & timestamp < as.POSIXct(paste0(year(min(timestamp, na.rm = TRUE)) + 1, '-07-15 00:00:00'), format = "%Y-%m-%d %H:%M:%S"), 2, first_migration)) %>%
-  filter(first_migration %in% c(1,2)) %>% select(id, timestamp, first_migration) %>% 
-  right_join(as.data.frame(data) %>% select(-first_migration, -geometry), by = join_by(id, timestamp)) %>% st_as_sf() # troubleshooting issues with right join and sf object - temporally convert to df and back to sf afterwards
+  filter(first_migration %in% c(1,2)) %>%
+  select(id, timestamp, first_migration) %>% 
+  right_join(as.data.frame(data) %>%
+               select(-first_migration, -geometry), by = join_by(id, timestamp)) %>%
+  st_as_sf() # troubleshooting issues with right join and sf object - temporally convert to df and back to sf afterwards
 
 data <- data %>% mutate(first_migration = factor(case_when(first_migration == 1 ~ 'autumn', 
                                              first_migration == 2 ~ 'spring', 
                                             TRUE ~ as.character(first_migration))))
+
+
+### NEED TO EXTRACT THE FIRST AUTUMN AND FIRST SPRING MIGRATION OF ALL BIRDS ####
+## somehow the script only retains 10 spring migrations...
+
+
+
+data %>%
+  mutate(month=month(timestamp)) %>%
+  filter(month %in% c(1,2,3,4,5,6)) %>%
+  dplyr::filter(migration == 'migratory')
+
+
+
+
+
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 2. Create a raster for the migration route of REKI's  --------
@@ -78,10 +101,14 @@ data <- data %>%
 # create df to extract magnetic field values for spring migration for every bird 
 
 birds <- unique(data$id) # get ids from all birds 
-mean_spring <- data %>% filter(first_migration == 'spring') %>% group_by(id) %>% summarise(mean_spring = mean(timestamp)) # get mean spring migration dates 
+mean_spring <- data %>%
+  filter(first_migration == 'spring') %>%
+  group_by(id) %>%
+  summarise(mean_spring = mean(timestamp)) # get mean spring migration dates 
 
 df_rast <- as.data.frame(xyFromCell(rast, 1:ncell(rast))) # get the coordinates from raster
-df_rast <- df_rast %>% rename(long = x, lat = y) # rename raster
+df_rast <- df_rast %>%
+  rename(long = x, lat = y) # rename raster
 
 df_rast <- data.frame(long = rep(df_rast$long, times = length(birds)), 
                       lat = rep(df_rast$lat, times = length(birds)), 
@@ -90,9 +117,11 @@ df_rast <- data.frame(long = rep(df_rast$long, times = length(birds)),
                       declination = NA, 
                       intensity = NA)
 
-df_rast <- df_rast %>% left_join(mean_spring, by = join_by(id)) # add the mean_spring migration dates 
+df_rast <- df_rast %>%
+  left_join(mean_spring, by = join_by(id)) # add the mean_spring migration dates 
 
-df_rast <- df_rast %>% drop_na(mean_spring) # drop all NAs to avoid error in magneticField()
+df_rast <- df_rast %>%
+  drop_na(mean_spring) # drop all NAs to avoid error in magneticField()
 
 # get magnetic field values for mean date of each birds first spring migration
 df_rast$inclination <- magneticField(longitude = df_rast$long, latitude = df_rast$lat, time = df_rast$mean_spring)$inclination
@@ -142,6 +171,16 @@ overlap <- df_rast %>% select(-mean_spring) %>%
 
 dim(overlap)
 head(overlap)
+
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 5. SUMMARIZE OVERLAP of what proportion of red kites migrated fully within the autumn magnetic field --------
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+overlap
+
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 5. Plot data --------
