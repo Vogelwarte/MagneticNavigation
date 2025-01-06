@@ -233,7 +233,7 @@ fwrite(OUTPUT,"output/REKI_first_mig_summaries.csv")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ######## COMPILE ALL GRAPHS INTO ONE FILE ####### --------
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+### resized images with https://imageresizer.com/bulk-resize
 library(png)
 library(grid)
 library(gridExtra)
@@ -243,7 +243,7 @@ plots
 pdf("output/REKI_migration_mag_field_all.pdf")
 for (i in 1:length(plots)) {
   p1 <- readPNG(paste0("output/",plots[i]), native = FALSE)
-  grid.raster(p1, width=unit(1, "npc"), height= unit(1, "npc"))
+  grid.raster(p1, x = unit(0.5, "npc"), width=unit(1, "npc"))
   plot.new()
 }
 dev.off()
